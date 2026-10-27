@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Purity and Entropy Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0}
+
+/* Layout: lab-notebook page on graph paper — the group of people and the worked calculation on the left, the entropy curve on the right; stacks on phones. */
+:root{
+  --paper:#f3f6f8; --card:#ffffff; --ink:#1b2a3a; --muted:#5b6b7a; --grid:#dbe4ea; --line:#c9d5de;
+  --a:#1f5fd1; --b:#d0312d; --curve:#6b3fa0;
+  --display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --body:"Source Sans 3","Segoe UI",system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#111a22; --card:#18232d; --ink:#e3ebf1; --muted:#9aabb9; --grid:#22303c; --line:#2e3f4d;
+  --a:#6ea0ff; --b:#ff6b66; --curve:#c9a2f2; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#111a22; --card:#18232d; --ink:#e3ebf1; --muted:#9aabb9; --grid:#22303c; --line:#2e3f4d;
+  --a:#6ea0ff; --b:#ff6b66; --curve:#c9a2f2; color-scheme:dark}
+
+body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5;
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:24px 24px}
+.wrap{max-width:1120px;margin:0 auto;padding-block:28px 40px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:grid;gap:20px}
+header h1{font-family:var(--display);font-weight:800;font-size:clamp(1.8rem,4vw,2.6rem);line-height:1.1;margin:0;text-wrap:balance}
+header p{margin:8px 0 0;color:var(--muted);max-width:68ch}
+.formula-hero{font:600 1.15rem var(--mono);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 14px;display:inline-block;margin-top:12px;overflow-x:auto;max-width:100%}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:20px}
+@media (max-width:860px){.grid{grid-template-columns:1fr}}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;display:grid;gap:16px;align-content:start;min-width:0}
+h2{font-family:var(--display);font-weight:600;font-size:1.15rem;margin:0}
+.label{font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:end}
+.field{display:grid;gap:4px;flex:1;min-width:130px}
+input[type=text]{font:600 1rem var(--body);padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink);width:100%;box-sizing:border-box}
+.stepper{display:flex;align-items:center;gap:6px}
+.stepper button,.presets button{font:600 .9rem var(--body);padding:6px 12px;border-radius:6px;border:1px solid var(--line);background:var(--paper);color:var(--ink);cursor:pointer}
+.stepper output{font:600 1.05rem var(--mono);min-width:2.2ch;text-align:center}
+button:focus-visible,input:focus-visible{outline:2px solid var(--a);outline-offset:2px}
+.presets{display:flex;gap:8px;flex-wrap:wrap}
+.presets button.main{background:var(--ink);color:var(--card);border-color:var(--ink)}
+input[type=range]{width:100%;accent-color:var(--ink)}
+.slider-ends{display:flex;justify-content:space-between;font-size:.85rem;color:var(--muted)}
+.bag{border:2px solid var(--ink);border-radius:50%;aspect-ratio:1;width:min(260px,100%);margin:0 auto;display:flex;flex-wrap:wrap;align-content:center;justify-content:center;gap:6px;padding:28px;box-sizing:border-box}
+.person{width:34px;height:34px;border-radius:50%;border:none;font:800 1.25rem var(--mono);color:#fff;cursor:pointer;display:grid;place-items:center;padding:0;line-height:1}
+.person.a{background:var(--a)} .person.b{background:var(--b)}
+:root[data-theme="dark"] .person{color:#111a22}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .person{color:#111a22}}
+.legend{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;font-size:.95rem}
+.legend span::before{content:"";display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:6px;vertical-align:-1px;background:var(--c)}
+.hint{font-size:.85rem;color:var(--muted);text-align:center;margin-top:-8px}
+.calc{font:.95rem/1.8 var(--mono);font-variant-numeric:tabular-nums;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow-x:auto;white-space:nowrap}
+.calc .ca{color:var(--a);font-weight:600}.calc .cb{color:var(--b);font-weight:600}
+.calc .res{color:var(--curve);font-weight:600;font-size:1.1rem}
+.verdict{padding:10px 12px;border-radius:8px;border:1px dashed var(--line)}
+.chart{width:100%;height:auto;display:block}
+.chart text{fill:var(--muted);font:12px var(--mono)}
+.chart .ttl{fill:var(--ink);font:600 14px var(--body)}
+.notes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:860px){.notes{grid-template-columns:1fr}}
+.note{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.note h3{margin:0 0 4px;font-family:var(--display);font-weight:600;font-size:1rem}
+.note p{margin:0;color:var(--muted)}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Purity and Entropy Explorer</h1>
+    <p>Entropy measures how <b>impure</b> (mixed) a group is. A group where everyone is in the same class is pure and has entropy 0. A 50/50 group is the most mixed and has entropy 1 bit.</p>
+    <div class="formula-hero">H(X) = − Σ p(x) · log₂ p(x)</div>
+  </header>
+
+  <div class="grid">
+    <section class="panel" aria-label="Set up the group">
+      <div class="presets">
+        <button type="button" class="main" id="ex">Example: 7 blue, 3 red</button>
+        <button type="button" data-k="0">All one class</button>
+        <button type="button" data-half>50 / 50</button>
+      </div>
+      <div class="row">
+        <div class="field"><label class="label" for="na">Class + name</label><input id="na" type="text" value="blue"></div>
+        <div class="field"><label class="label" for="nb">Class − name</label><input id="nb" type="text" value="red"></div>
+        <div class="field" style="flex:0 0 auto;min-width:0"><span class="label">Group size</span>
+          <div class="stepper"><button type="button" id="nminus" aria-label="Fewer people">−</button><output id="nout">10</output><button type="button" id="nplus" aria-label="More people">+</button></div></div>
+      </div>
+      <div>
+        <label class="label" for="k" id="klabel">Number in class +</label>
+        <input id="k" type="range" min="0" max="10" step="1" value="7">
+        <div class="slider-ends"><span id="endL">all −</span><span id="endR">all +</span></div>
+      </div>
+      <div class="bag" id="bag" aria-label="The group of people"></div>
+      <div class="legend" id="legend"></div>
+      <div class="hint">Tap a person to switch their class.</div>
+    </section>
+
+    <section class="panel" aria-label="Entropy curve and calculation">
+      <h2>Entropy curve</h2>
+      <svg class="chart" id="chart" viewBox="0 0 540 400" role="img" aria-label="Entropy against the proportion in class +"></svg>
+      <div>
+        <div class="label" style="margin-bottom:6px">Step-by-step</div>
+        <div class="calc" id="calc"></div>
+      </div>
+      <div class="verdict" id="verdict"></div>
+    </section>
+  </div>
+
+  <div class="notes">
+    <div class="note"><h3>Pure group (H = 0)</h3><p>Everyone is in one class. We know the answer for sure, so there is no uncertainty. These are the two ends of the curve.</p></div>
+    <div class="note"><h3>Most impure (H = 1)</h3><p>Half are in each class. A random pick is a coin toss, so uncertainty is highest. This is the top of the curve.</p></div>
+    <div class="note"><h3>Why 0 · log₂ 0 = 0</h3><p>log₂ 0 is undefined, but p · log₂ p gets closer and closer to 0 as p shrinks. So a class with no members adds nothing.</p></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const NS="http://www.w3.org/2000/svg", $=id=>document.getElementById(id);
+  const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  let N=10, people=[];          // true = class +
+  const setK=k=>{people=Array.from({length:N},(_,i)=>i<k)};
+  setK(7);
+  const H=p=>(p<=0||p>=1)?0:-(p*Math.log2(p))-((1-p)*Math.log2(1-p));
+  const fmt=(x,d=3)=>(Math.abs(x)<5e-4?0:x).toFixed(d);
+  const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  function el(t,a,p,txt){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(txt!=null)e.textContent=txt;p&&p.appendChild(e);return e}
+
+  function drawChart(k){
+    const s=$("chart");s.innerHTML="";
+    const L=60,R=520,T=20,B=345,X=v=>L+v*(R-L),Y=v=>B-v*(B-T);
+    const g=css("--grid"),mu=css("--muted"),ink=css("--ink"),cur=css("--curve"),ca=css("--a"),cb=css("--b"),card=css("--card");
+    for(let i=0;i<=5;i++){const v=i/5;
+      el("line",{x1:X(v),x2:X(v),y1:T,y2:B,stroke:g,"stroke-dasharray":"3 3"},s);
+      el("line",{x1:L,x2:R,y1:Y(v),y2:Y(v),stroke:g,"stroke-dasharray":"3 3"},s);
+      el("text",{x:X(v),y:B+18,"text-anchor":"middle"},s,v.toFixed(1));
+      el("text",{x:L-8,y:Y(v)+4,"text-anchor":"end"},s,v.toFixed(1));}
+    el("rect",{x:L,y:T,width:R-L,height:B-T,fill:"none",stroke:mu},s);
+    el("text",{x:(L+R)/2,y:B+42,"text-anchor":"middle",class:"ttl"},s,"p(+) = proportion in "+$("na").value);
+    el("text",{x:18,y:(T+B)/2,"text-anchor":"middle",class:"ttl",transform:`rotate(-90 18 ${(T+B)/2})`},s,"entropy H (bits)");
+
+    // mini groups along the curve, like a textbook figure
+    [0.1,0.3,0.5,0.7,0.9].forEach(p=>{
+      const cx=X(p),cy=Y(Math.max(H(p)-0.27,0.13)),r=30;
+      el("circle",{cx,cy,r,fill:card,stroke:mu,"stroke-width":1.2},s);
+      const nPlus=Math.round(p*10);
+      for(let i=0;i<10;i++){
+        const ang=i*2.4,rad=6+ (i%3)*7, x=cx+Math.cos(ang)*rad*1.1, y=cy+Math.sin(ang)*rad*1.05;
+        el("text",{x,y:y+4,"text-anchor":"middle",style:`font:800 12px var(--mono);fill:${i<nPlus?ca:cb}`},s,i<nPlus?"+":"−");
+      }
+    });
+
+    let d="";for(let i=0;i<=200;i++){const p=i/200;d+=(i?"L":"M")+X(p).toFixed(1)+","+Y(H(p)).toFixed(1)}
+    el("path",{d,fill:"none",stroke:cur,"stroke-width":2.5},s);
+    for(let i=0;i<=N;i++){const p=i/N;el("circle",{cx:X(p),cy:Y(H(p)),r:3.5,fill:ink},s)}
+
+    const p=k/N,h=H(p);
+    el("line",{x1:X(p),x2:X(p),y1:Y(h),y2:B,stroke:ink,"stroke-dasharray":"5 4","stroke-width":1.5},s);
+    el("line",{x1:L,x2:X(p),y1:Y(h),y2:Y(h),stroke:ink,"stroke-dasharray":"5 4","stroke-width":1.5},s);
+    el("circle",{cx:X(p),cy:Y(h),r:9,fill:cur,stroke:card,"stroke-width":3},s);
+    const lx=p>0.6?X(p)-14:X(p)+14,anchor=p>0.6?"end":"start",ly=h>0.9?Y(h)+28:Y(h)-14;
+    const t=el("text",{x:lx,y:ly,"text-anchor":anchor,style:`font:600 13px var(--mono);fill:${ink}`},s,`(${k}/${N}, ${fmt(h)})`);
+  }
+
+  function render(){
+    const k=people.filter(Boolean).length,na=$("na").value||"class +",nb=$("nb").value||"class −";
+    const pa=k/N,pb=(N-k)/N,h=H(pa);
+    $("nout").textContent=N;$("k").max=N;$("k").value=k;
+    $("klabel").textContent="Number in "+na+" (+)";
+    $("endL").textContent="all "+nb;$("endR").textContent="all "+na;
+    const bag=$("bag");bag.innerHTML="";
+    const size=N>14?26:34;
+    people.forEach((isA,i)=>{const b=document.createElement("button");b.type="button";
+      b.className="person "+(isA?"a":"b");b.textContent=isA?"+":"−";b.style.width=b.style.height=size+"px";
+      b.setAttribute("aria-label",`Person ${i+1}: ${isA?na:nb}. Tap to switch.`);
+      b.onclick=()=>{people[i]=!people[i];render()};bag.appendChild(b)});
+    $("legend").innerHTML=`<span style="--c:var(--a)">+ ${esc(na)}: ${k}</span><span style="--c:var(--b)">− ${esc(nb)}: ${N-k}</span>`;
+
+    const term=(p,cls)=>p===0?`<span class="${cls}">0</span> <span style="opacity:.7">(0·log₂0 = 0)</span>`:
+      `<span class="${cls}">${fmt(p)}</span>·(${fmt(Math.log2(p))})`;
+    const ta=pa===0?0:-pa*Math.log2(pa),tb=pb===0?0:-pb*Math.log2(pb);
+    $("calc").innerHTML=
+      `p(${esc(na)}) = ${k}/${N} = <span class="ca">${fmt(pa)}</span><br>`+
+      `p(${esc(nb)}) = ${N-k}/${N} = <span class="cb">${fmt(pb)}</span><br>`+
+      `H(S) = −p(${esc(na)})·log₂p(${esc(na)}) − p(${esc(nb)})·log₂p(${esc(nb)})<br>`+
+      `&nbsp;&nbsp;&nbsp;&nbsp; = −${term(pa,"ca")} − ${term(pb,"cb")}<br>`+
+      `&nbsp;&nbsp;&nbsp;&nbsp; = ${fmt(ta)} + ${fmt(tb)}<br>`+
+      `&nbsp;&nbsp;&nbsp;&nbsp; = <span class="res">${fmt(h)} bits</span>`;
+    let v;
+    if(h<1e-9)v=`<b>Pure group.</b> Everyone is ${esc(k?na:nb)}, so H = 0. No uncertainty.`;
+    else if(Math.abs(h-1)<1e-9)v=`<b>Most impure.</b> An even split gives the maximum, H = 1 bit.`;
+    else v=`<b>Mixed group.</b> H = ${fmt(h)} is between 0 (pure) and 1 (50/50). ${h>0.8?"Fairly impure.":"Leaning towards pure."}`;
+    $("verdict").innerHTML=v;
+    drawChart(k);
+  }
+
+  $("k").addEventListener("input",e=>{setK(+e.target.value);render()});
+  $("na").addEventListener("input",render);$("nb").addEventListener("input",render);
+  $("nminus").onclick=()=>{if(N>2){const k=Math.min(people.filter(Boolean).length,N-1);N--;setK(k);render()}};
+  $("nplus").onclick=()=>{if(N<20){const k=people.filter(Boolean).length;N++;setK(k);render()}};
+  $("ex").onclick=()=>{N=10;$("na").value="blue";$("nb").value="red";setK(7);render()};
+  document.querySelector("[data-k]").onclick=()=>{setK(0);render()};
+  document.querySelector("[data-half]").onclick=()=>{if(N%2){N++;}setK(N/2);render()};
+  if(window.matchMedia){const mq=matchMedia("(prefers-color-scheme: dark)");mq.addEventListener&&mq.addEventListener("change",render)}
+  new MutationObserver(render).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
+  render();
+})();
+</script>
+
+</body>
+</html>
